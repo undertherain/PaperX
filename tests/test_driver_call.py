@@ -4,8 +4,11 @@ from redelivery_agent import (
     build_short_driver_call_objective,
     format_driver_call_outcome,
     normalize_japan_phone_for_call,
+    plan_driver_call_from_recognition,
+    plan_redelivery_from_recognition,
     summarize_driver_call_outcome,
 )
+from slip_recognition import SlipRecognition
 
 
 class DriverCallTest(unittest.TestCase):
@@ -38,6 +41,22 @@ class DriverCallTest(unittest.TestCase):
         self.assertIn("not available", outcome.summary)
         self.assertIn("tomorrow", outcome.next_step)
         self.assertIn("too late", format_driver_call_outcome(outcome))
+
+    def test_builds_plans_from_cached_recognition(self):
+        recognition = SlipRecognition(
+            carrier="yamato",
+            tracking_number="123456789012",
+            phone_number="08011112222",
+            confidence=0.9,
+            notes="",
+        )
+        booking = plan_redelivery_from_recognition(recognition, "around six pm")
+        self.assertEqual(booking.time_slot, "18:00-20:00")
+        self.assertEqual(booking.tracking_number, "123456789012")
+
+        call = plan_driver_call_from_recognition(recognition)
+        self.assertEqual(call.driver_phone_number, "+818011112222")
+        self.assertIn("123456789012", call.objective)
 
 
 if __name__ == "__main__":

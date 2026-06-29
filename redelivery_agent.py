@@ -321,6 +321,30 @@ async def plan_redelivery(
     return plan
 
 
+def plan_redelivery_from_recognition(
+    recognition: SlipRecognition,
+    requested_time: str,
+) -> RedeliveryPlan:
+    if not recognition.tracking_number:
+        raise RuntimeError(f"Could not read the tracking number. Notes: {recognition.notes or 'none'}")
+
+    time_slot = normalize_time_slot(requested_time)
+    if time_slot not in VALID_TIME_SLOTS:
+        valid = ", ".join(VALID_TIME_SLOTS)
+        raise RuntimeError(f"Could not match '{requested_time}' to a supported slot. Use one of: {valid}")
+
+    return RedeliveryPlan(
+        carrier=recognition.carrier,
+        tracking_number=recognition.tracking_number,
+        phone_number=recognition.booking_phone_number,
+        requested_time=requested_time,
+        time_slot=time_slot,
+        confidence=recognition.confidence,
+        notes=recognition.notes,
+        user_summary=f"Ready to book {time_slot}.",
+    )
+
+
 async def plan_driver_call(
     image_path: str,
     progress: ProgressCallback | None = None,
@@ -362,6 +386,35 @@ async def plan_driver_call(
     if progress:
         await progress(f"Agent prepared a call to {normalized_phone}.")
     return plan
+
+
+def plan_driver_call_from_recognition(recognition: SlipRecognition) -> DriverCallPlan:
+    override_phone = os.getenv("DRIVER_PHONE_NUMBER")
+    driver_phone = override_phone or recognition.phone_number
+    if not driver_phone:
+        raise RuntimeError(
+            "Could not find a driver phone number. Set DRIVER_PHONE_NUMBER "
+            "or use a slip that shows the driver/depot number."
+        )
+
+    normalized_phone = normalize_japan_phone_for_call(driver_phone)
+    if not normalized_phone:
+        raise RuntimeError(f"Driver phone number is not callable: {driver_phone}")
+    if normalized_phone == normalize_japan_phone_for_call(DEFAULT_PHONE_NUMBER) and not override_phone:
+        raise RuntimeError(
+            "Only found the demo fallback phone number. Set DRIVER_PHONE_NUMBER "
+            "or use a slip that shows the driver/depot number."
+        )
+
+    return DriverCallPlan(
+        carrier=recognition.carrier,
+        tracking_number=recognition.tracking_number,
+        driver_phone_number=normalized_phone,
+        objective=build_short_driver_call_objective(recognition.tracking_number),
+        confidence=recognition.confidence,
+        notes=recognition.notes,
+        user_summary=f"Ready to call {normalized_phone}.",
+    )
 
 
 async def book_confirmed_redelivery(

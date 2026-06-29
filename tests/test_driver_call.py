@@ -1,6 +1,11 @@
 import unittest
 
-from redelivery_agent import normalize_japan_phone_for_call
+from redelivery_agent import (
+    build_short_driver_call_objective,
+    format_driver_call_outcome,
+    normalize_japan_phone_for_call,
+    summarize_driver_call_outcome,
+)
 
 
 class DriverCallTest(unittest.TestCase):
@@ -12,6 +17,27 @@ class DriverCallTest(unittest.TestCase):
     def test_rejects_empty_numbers(self):
         self.assertIsNone(normalize_japan_phone_for_call(""))
         self.assertIsNone(normalize_japan_phone_for_call(None))
+
+    def test_driver_objective_is_short_and_handles_rejection(self):
+        objective = build_short_driver_call_objective("123456789012")
+        self.assertIn("20秒以内", objective)
+        self.assertIn("最短はいつですか", objective)
+        self.assertIn("123456789012", objective)
+
+    def test_summarizes_too_late_for_today(self):
+        outcome = summarize_driver_call_outcome(
+            {
+                "status": "completed",
+                "turns": [
+                    {"role": "assistant", "text": "今日中の再配達は可能ですか？"},
+                    {"role": "user", "text": "Sorry, too late for today."},
+                ],
+            }
+        )
+        self.assertIs(outcome.today_available, False)
+        self.assertIn("not available", outcome.summary)
+        self.assertIn("tomorrow", outcome.next_step)
+        self.assertIn("too late", format_driver_call_outcome(outcome))
 
 
 if __name__ == "__main__":

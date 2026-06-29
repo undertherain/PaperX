@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -16,11 +17,14 @@ from redelivery_agent import (
     book_confirmed_redelivery,
     call_confirmed_driver,
     format_agent_trace,
+    format_driver_call_outcome,
     format_driver_call_confirmation,
     format_driver_call_trace,
     format_plan_confirmation,
+    get_driver_call_status,
     plan_driver_call,
     plan_redelivery,
+    summarize_driver_call_outcome,
 )
 
 load_dotenv()
@@ -150,12 +154,57 @@ async def handle_call_confirmation(update: Update, context: ContextTypes.DEFAULT
                 f"Call started.\nSID: {result.call_sid}\nStatus: {result.status or 'created'}"
             )
             await update.message.reply_text(format_driver_call_trace(plan, result))
+            if result.call_sid:
+                context.application.create_task(
+                    watch_driver_call(
+                        context,
+                        update.effective_chat.id,
+                        result.call_sid,
+                    )
+                )
         else:
             await update.message.reply_text(f"Driver call failed:\n{result.error}")
     except Exception as e:
         await update.message.reply_text(f"Driver call failed:\n{e}")
 
     return ConversationHandler.END
+
+async def watch_driver_call(
+    context: ContextTypes.DEFAULT_TYPE,
+    chat_id: int,
+    call_sid: str,
+) -> None:
+    terminal_statuses = {"completed", "disconnected", "error", "busy", "failed", "no-answer", "canceled"}
+    await context.application.bot.send_message(chat_id=chat_id, text="Watching the call transcript...")
+
+    last_record = None
+    for _ in range(24):
+        await asyncio.sleep(5)
+        try:
+            record = await asyncio.to_thread(get_driver_call_status, call_sid)
+        except Exception as exc:
+            await context.application.bot.send_message(
+                chat_id=chat_id,
+                text=f"Could not fetch call transcript yet:\n{exc}",
+            )
+            return
+
+        last_record = record
+        status = str(record.get("status") or "")
+        if status in terminal_statuses:
+            outcome = summarize_driver_call_outcome(record)
+            await context.application.bot.send_message(
+                chat_id=chat_id,
+                text=format_driver_call_outcome(outcome),
+            )
+            return
+
+    if last_record is not None:
+        outcome = summarize_driver_call_outcome(last_record)
+        await context.application.bot.send_message(
+            chat_id=chat_id,
+            text="Call is still in progress or transcript is delayed.\n\n" + format_driver_call_outcome(outcome),
+        )
 
 def main():
     token = os.environ.get("TELEGRAM_TOKEN")

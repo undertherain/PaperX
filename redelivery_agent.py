@@ -78,6 +78,14 @@ class DriverCallResult(BaseModel):
     user_summary: str
 
 
+class DriverCallOutcome(BaseModel):
+    status: str
+    today_available: bool | None
+    summary: str
+    next_step: str
+    transcript: str = ""
+
+
 def _require_agents_sdk() -> None:
     if Agent is None or Runner is None:
         raise RuntimeError("Install the OpenAI Agents SDK: python3 -m pip install openai-agents")
@@ -350,6 +358,7 @@ async def plan_driver_call(
         )
 
     plan = plan.model_copy(update={"driver_phone_number": normalized_phone})
+    plan = plan.model_copy(update={"objective": build_short_driver_call_objective(plan.tracking_number)})
     if progress:
         await progress(f"Agent prepared a call to {normalized_phone}.")
     return plan
@@ -444,6 +453,117 @@ def format_driver_call_trace(plan: DriverCallPlan, result: DriverCallResult) -> 
         "3. Waited for your confirmation\n"
         f"4. Started Twilio/OpenAI realtime voice call: {status}"
     )
+
+
+def build_short_driver_call_objective(tracking_number: str | None) -> str:
+    tracking = tracking_number or "不明"
+    return (
+        "日本語で短く電話してください。全体を20秒以内に収めます。"
+        "一文ずつ、余計な説明なし。"
+        f"最初に「再配達の件です。伝票番号は{tracking}です。今日中の再配達は可能ですか？」と聞く。"
+        "可能なら時間だけ確認してお礼を言って終了。"
+        "無理なら「最短はいつですか？」だけ聞いて、お礼を言って終了。"
+    )
+
+
+def get_driver_call_status(call_sid: str) -> dict[str, Any]:
+    request = urllib.request.Request(f"{VOICE_AGENT_SERVER_URL.rstrip('/')}/calls/{call_sid}")
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return json_loads(response.read().decode("utf-8"))
+
+
+def summarize_driver_call_outcome(record: dict[str, Any]) -> DriverCallOutcome:
+    status = str(record.get("status") or "")
+    transcript = transcript_text(record)
+    driver_text = transcript_text(record, roles={"user", "unknown"})
+    normalized = driver_text.lower()
+
+    negative_markers = (
+        "too late",
+        "not possible",
+        "can't today",
+        "cannot today",
+        "no today",
+        "今日は無理",
+        "本日は無理",
+        "今日中は無理",
+        "できません",
+        "難しい",
+    )
+    positive_markers = (
+        "possible",
+        "can today",
+        "できます",
+        "可能",
+        "伺います",
+        "届け",
+        "配達できます",
+    )
+
+    today_available: bool | None = None
+    if any(marker in normalized for marker in negative_markers) or any(
+        marker in driver_text for marker in negative_markers
+    ):
+        today_available = False
+    elif any(marker in normalized for marker in positive_markers) or any(
+        marker in driver_text for marker in positive_markers
+    ):
+        today_available = True
+
+    if today_available is False:
+        summary = "Driver said same-day redelivery is not available."
+        next_step = "Use the form flow to book tomorrow."
+    elif today_available is True:
+        summary = "Driver indicated same-day redelivery is possible."
+        next_step = "No form booking is needed unless the driver asked for it."
+    elif status == "error":
+        summary = f"Call ended with an error: {record.get('error') or 'unknown'}"
+        next_step = "Try the form flow or call again."
+    else:
+        summary = "Call finished, but the outcome was unclear."
+        next_step = "Check the transcript or use the form flow."
+
+    return DriverCallOutcome(
+        status=status,
+        today_available=today_available,
+        summary=summary,
+        next_step=next_step,
+        transcript=transcript,
+    )
+
+
+def transcript_text(record: dict[str, Any], roles: set[str] | None = None) -> str:
+    turns = record.get("turns") or []
+    lines: list[str] = []
+    if isinstance(turns, list):
+        for turn in turns:
+            if not isinstance(turn, dict):
+                continue
+            role = str(turn.get("role") or "unknown")
+            if roles is not None and role not in roles:
+                continue
+            text = str(turn.get("text") or "").strip()
+            if text:
+                lines.append(f"{role}: {text}")
+    return "\n".join(lines)
+
+
+def format_driver_call_outcome(outcome: DriverCallOutcome) -> str:
+    message = (
+        "Call outcome:\n"
+        f"Status: {outcome.status or 'unknown'}\n"
+        f"Summary: {outcome.summary}\n"
+        f"Next: {outcome.next_step}"
+    )
+    if outcome.transcript:
+        message += f"\n\nTranscript:\n{trim_text(outcome.transcript, 900)}"
+    return message
+
+
+def trim_text(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3].rstrip() + "..."
 
 
 def normalize_japan_phone_for_call(phone_number: str | None) -> str | None:

@@ -32,6 +32,7 @@ export TWILIO_ACCOUNT_SID="..."
 export TWILIO_AUTH_TOKEN="..."
 export TWILIO_FROM_NUMBER="..."
 export PUBLIC_BASE_URL="https://your-public-host.example"
+export VOICE_AGENT_INSTRUCTIONS="あなたは日本語の電話代行です。必ず短く、一文ずつ話します。雑談や説明はしません。目的を達成したらすぐ終了します。"
 onestop-voice-agent serve --host 0.0.0.0 --port 8080
 ```
 

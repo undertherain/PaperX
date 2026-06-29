@@ -13,6 +13,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from calendar_reminder import create_redelivery_reminder
 from slip_recognition import DEFAULT_PHONE_NUMBER, SlipRecognition, recognize_slip
 from time_slots import normalize_time_slot
 
@@ -82,7 +83,15 @@ async def handle_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=True,
             check=True,
         )
-        await update.message.reply_text(f"Result:\n{result.stdout}")
+        reminder = create_redelivery_reminder(
+            tracking_number=recognition.tracking_number,
+            phone_number=recognition.booking_phone_number,
+            time_slot=time_slot,
+        )
+        await update.message.reply_text(
+            f"Result:\n{result.stdout}\n"
+            f"Calendar reminder added: {reminder['starts_at']} ({reminder['time_slot']})"
+        )
     except subprocess.CalledProcessError as e:
         await update.message.reply_text(f"Booking automation failed:\n{e.stderr}")
     except Exception as e:

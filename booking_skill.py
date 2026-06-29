@@ -1,6 +1,8 @@
 import sys
 import time
 
+from calendar_reminder import create_redelivery_reminder
+
 def main():
     if len(sys.argv) < 3:
         print("Usage: python booking_skill.py <image_path> <time_slot>")
@@ -17,6 +19,13 @@ def main():
     print(f"[3/3] Navigating to Yamato website to book slot: {time_slot}...")
     time.sleep(1)
     print(f"✅ Success! Redelivery booked for {time_slot}.")
+    reminder = create_redelivery_reminder(
+        tracking_number="123456789012",
+        phone_number="09012345678",
+        time_slot=time_slot,
+    )
+    print(f"📅 Calendar reminder added for {reminder['starts_at']} ({reminder['time_slot']}).")
+    print("Open it with: python calendar_reminder.py --serve")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,178 @@
+:root {
+    --ink: #17202a;
+    --muted: #667085;
+    --line: #d9dee7;
+    --panel: #ffffff;
+    --surface: #f4f7fb;
+    --accent: #0b6bcb;
+    --accent-dark: #084c91;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+}
+
+h1,
+h2,
+h3,
+p {
+    margin: 0;
+}
+
+h1 {
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+button {
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 14px;
+}
+
+button:hover {
+    background: var(--accent-dark);
+}
+
+.calendar-shell {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) 1fr;
+    gap: 20px;
+    padding: 24px clamp(16px, 4vw, 48px);
+}
+
+.today-panel,
+.reminder-list {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.today-panel {
+    min-height: 180px;
+}
+
+.today-panel h2 {
+    font-size: 22px;
+    line-height: 1.2;
+    margin-top: 12px;
+}
+
+#next-time {
+    color: var(--muted);
+    margin-top: 10px;
+}
+
+.list-header {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+}
+
+.list-header h2 {
+    font-size: 18px;
+}
+
+#count-label {
+    background: #e8f2ff;
+    border-radius: 999px;
+    color: var(--accent-dark);
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 28px;
+    padding: 4px 8px;
+    text-align: center;
+}
+
+.reminder-card {
+    align-items: flex-start;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 16px;
+}
+
+.reminder-card h3 {
+    font-size: 17px;
+    margin-top: 4px;
+}
+
+.reminder-date,
+.tracking,
+.reminder-meta {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.tracking {
+    margin-top: 6px;
+}
+
+.reminder-meta {
+    display: grid;
+    gap: 6px;
+    min-width: 160px;
+    text-align: right;
+}
+
+.empty-state {
+    color: var(--muted);
+    padding: 24px 0;
+}
+
+@media (max-width: 760px) {
+    .app-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .calendar-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .reminder-card {
+        flex-direction: column;
+    }
+
+    .reminder-meta {
+        text-align: left;
+    }
+}

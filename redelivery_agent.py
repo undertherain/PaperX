@@ -540,6 +540,18 @@ def summarize_driver_call_outcome(record: dict[str, Any]) -> DriverCallOutcome:
         "今日は無理",
         "本日は無理",
         "今日中は無理",
+        "今日はもう終わり",
+        "本日はもう終わり",
+        "今日は終わり",
+        "今日の受付は終了",
+        "本日の受付は終了",
+        "今日はちょっと",
+        "今日は厳しい",
+        "今日はきびしい",
+        "今日はもう",
+        "ウェブサイトで調べて",
+        "webサイトで調べて",
+        "サイトで調べて",
         "できません",
         "難しい",
     )
@@ -573,8 +585,8 @@ def summarize_driver_call_outcome(record: dict[str, Any]) -> DriverCallOutcome:
         summary = f"Call ended with an error: {record.get('error') or 'unknown'}"
         next_step = "Try the form flow or call again."
     else:
-        summary = "Call finished, but the outcome was unclear."
-        next_step = "Check the transcript or use the form flow."
+        summary = "Call did not clearly confirm same-day redelivery."
+        next_step = "Use the form flow to book tomorrow."
 
     return DriverCallOutcome(
         status=status,

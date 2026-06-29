@@ -225,7 +225,7 @@ async def watch_driver_call(
                 chat_id=chat_id,
                 text=format_driver_call_outcome(outcome),
             )
-            if outcome.today_available is False:
+            if outcome.today_available is not True:
                 context.user_data['post_call_offer_form'] = True
                 await context.application.bot.send_message(
                     chat_id=chat_id,

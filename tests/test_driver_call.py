@@ -42,6 +42,37 @@ class DriverCallTest(unittest.TestCase):
         self.assertIn("tomorrow", outcome.next_step)
         self.assertIn("too late", format_driver_call_outcome(outcome))
 
+    def test_summarizes_japanese_soft_rejection(self):
+        outcome = summarize_driver_call_outcome(
+            {
+                "status": "completed",
+                "turns": [
+                    {"role": "user", "text": "もしもし。"},
+                    {"role": "assistant", "text": "今日中の再配達は可能ですか？"},
+                    {"role": "user", "text": "いやあ、すみません。今日はもう終わりだと思います。"},
+                    {"role": "assistant", "text": "最短はいつですか？"},
+                    {"role": "user", "text": "あ、それはあまり知りませんが、ウェブサイトで調べてください。"},
+                ],
+            }
+        )
+        self.assertIs(outcome.today_available, False)
+        self.assertIn("not available", outcome.summary)
+        self.assertIn("tomorrow", outcome.next_step)
+
+    def test_unclear_outcome_defaults_to_form_fallback(self):
+        outcome = summarize_driver_call_outcome(
+            {
+                "status": "completed",
+                "turns": [
+                    {"role": "user", "text": "確認します。"},
+                    {"role": "assistant", "text": "ありがとうございます。"},
+                ],
+            }
+        )
+        self.assertIsNone(outcome.today_available)
+        self.assertIn("did not clearly confirm", outcome.summary)
+        self.assertIn("tomorrow", outcome.next_step)
+
     def test_builds_plans_from_cached_recognition(self):
         recognition = SlipRecognition(
             carrier="yamato",

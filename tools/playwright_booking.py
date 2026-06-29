@@ -6,6 +6,14 @@ from playwright.async_api import async_playwright
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from time_slots import VALID_TIME_SLOTS, normalize_time_slot
 
+DEMO_STEP_DELAY_MS = int(os.getenv("BOOKING_DEMO_STEP_DELAY_MS", "700"))
+DEMO_TYPE_DELAY_MS = int(os.getenv("BOOKING_DEMO_TYPE_DELAY_MS", "90"))
+
+
+async def pause_for_demo(page):
+    await page.wait_for_timeout(DEMO_STEP_DELAY_MS)
+
+
 async def book_redelivery(tracking, phone, timeslot):
     timeslot = normalize_time_slot(timeslot)
     if timeslot not in VALID_TIME_SLOTS:
@@ -16,7 +24,7 @@ async def book_redelivery(tracking, phone, timeslot):
         # Launch browser in non-headless mode so the demo is visible
         browser = await p.chromium.launch(
             headless=False,
-            slow_mo=150,
+            slow_mo=250,
             executable_path='/snap/bin/chromium'
         )
         page = await browser.new_page()
@@ -27,18 +35,25 @@ async def book_redelivery(tracking, phone, timeslot):
         
         print(f"Opening {html_path}...")
         await page.goto(html_path)
+        await pause_for_demo(page)
         
         print("Filling tracking number...")
-        await page.fill('#tracking-number', tracking)
+        await page.locator('#tracking-number').click()
+        await page.locator('#tracking-number').press_sequentially(tracking, delay=DEMO_TYPE_DELAY_MS)
+        await pause_for_demo(page)
         
         print("Filling phone number...")
-        await page.fill('#phone-number', phone)
+        await page.locator('#phone-number').click()
+        await page.locator('#phone-number').press_sequentially(phone, delay=DEMO_TYPE_DELAY_MS)
+        await pause_for_demo(page)
         
         print("Selecting date (tomorrow)...")
         await page.select_option('#desired-date', index=2)
+        await pause_for_demo(page)
         
         print(f"Selecting timeslot: {timeslot}...")
         await page.select_option('#desired-time', timeslot)
+        await pause_for_demo(page)
         
         print("Submitting form...")
         await page.click('button[type="submit"]')

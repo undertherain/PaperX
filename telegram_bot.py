@@ -37,9 +37,13 @@ WAITING_FOR_CALL_CONFIRMATION = 4
 WAITING_FOR_FALLBACK_TIME = 5
 
 YES_ANSWERS = {"yes", "y", "ok", "confirm", "book", "call", "はい", "お願いします"}
+BOT_BUILD = "paperx-2026-06-29-noon-fallback"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send me a photo of your redelivery slip.")
+
+async def version(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(BOT_BUILD)
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get the file from the last (highest resolution) photo
@@ -265,6 +269,7 @@ def main():
     
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("version", version))
     
     print("Bot is ready and listening for messages!")
     app.run_polling()

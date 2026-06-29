@@ -24,6 +24,25 @@ Rules:
 - Do not invent numbers. If a digit is unclear, set the field to null and explain briefly in notes.
 - confidence should be 0.0 to 1.0 for the extracted fields overall."""
 
+TRACKING_RETRY_PROMPT = """Look at the same Japanese parcel redelivery slip again.
+Focus only on finding the parcel tracking / waybill number.
+Return ONLY JSON with this schema:
+{
+  "carrier": "yamato" | "sagawa" | "japan_post" | "unknown",
+  "tracking_number": string | null,
+  "phone_number": string | null,
+  "confidence": number,
+  "notes": string
+}
+
+Rules:
+- tracking_number is the parcel waybill / inquiry number: 伝票番号, お問い合わせ番号, or送り状番号.
+- For Yamato/Kuroneko slips, the tracking number is usually 11 or 12 digits.
+- Ignore numbers labeled 携帯番号, 電話番号, TEL, postal codes, dates, and prices.
+- Return digits only, no hyphens or spaces.
+- If some digits are grouped or spaced visually, join them.
+- Do not invent numbers. If the waybill area is unreadable, return null and explain why."""
+
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
 DEFAULT_PHONE_NUMBER = "09012345678"
@@ -85,7 +104,7 @@ def normalize_recognition(payload: dict[str, Any]) -> SlipRecognition:
     )
 
 
-def recognize_slip(image_path: str, model: str = DEFAULT_MODEL) -> SlipRecognition:
+def recognize_slip(image_path: str, model: str = DEFAULT_MODEL, attempts: int = 3) -> SlipRecognition:
     try:
         from dotenv import load_dotenv
 
@@ -102,6 +121,20 @@ def recognize_slip(image_path: str, model: str = DEFAULT_MODEL) -> SlipRecogniti
         raise RuntimeError("Install the openai package to enable slip recognition.") from exc
 
     client = OpenAI()
+    image_url = encode_image(image_path)
+    prompts = [SLIP_RECOGNITION_PROMPT] + [TRACKING_RETRY_PROMPT] * max(0, attempts - 1)
+    results: list[SlipRecognition] = []
+
+    for prompt in prompts:
+        result = _recognize_slip_once(client, image_url, prompt, model)
+        results.append(result)
+        if result.tracking_number:
+            return merge_recognition_results(results)
+
+    return merge_recognition_results(results)
+
+
+def _recognize_slip_once(client: Any, image_url: str, prompt: str, model: str) -> SlipRecognition:
     response = client.chat.completions.create(
         model=model,
         response_format={"type": "json_object"},
@@ -109,14 +142,43 @@ def recognize_slip(image_path: str, model: str = DEFAULT_MODEL) -> SlipRecogniti
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": SLIP_RECOGNITION_PROMPT},
-                    {"type": "image_url", "image_url": {"url": encode_image(image_path)}},
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": image_url}},
                 ],
             }
         ],
     )
     content = response.choices[0].message.content or "{}"
     return normalize_recognition(json.loads(content))
+
+
+def merge_recognition_results(results: list[SlipRecognition]) -> SlipRecognition:
+    if not results:
+        return SlipRecognition(
+            carrier="unknown",
+            tracking_number=None,
+            phone_number=None,
+            confidence=0.0,
+            notes="No recognition attempts were run.",
+        )
+
+    tracking_source = next((result for result in results if result.tracking_number), None)
+    phone_source = next((result for result in results if result.phone_number), None)
+    carrier_source = next((result for result in results if result.carrier != "unknown"), results[0])
+    best_confidence = max(result.confidence for result in results)
+    notes = " | ".join(
+        f"attempt {index}: {result.notes or 'no notes'}"
+        for index, result in enumerate(results, start=1)
+        if result.notes
+    )
+
+    return SlipRecognition(
+        carrier=carrier_source.carrier,
+        tracking_number=tracking_source.tracking_number if tracking_source else None,
+        phone_number=phone_source.phone_number if phone_source else None,
+        confidence=best_confidence,
+        notes=notes or results[-1].notes,
+    )
 
 
 def main() -> None:

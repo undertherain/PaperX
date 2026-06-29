@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>再配達受付 - ヤマト運輸</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-container">
+            <div class="logo">ヤマト運輸</div>
+            <div class="header-links">
+                <a href="#">よくあるご質問</a>
+                <a href="#">お問い合わせ</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="breadcrumb">
+            ホーム > 再配達のお申込み
+        </div>
+
+        <div class="form-container" id="booking-form-container">
+            <h1 class="page-title">再配達のお申込み</h1>
+            <p class="instruction">ご不在連絡票に記載されている内容を入力してください。</p>
+
+            <form id="redelivery-form">
+                <div class="form-group">
+                    <label for="tracking-number">送り状（伝票）番号 <span class="required">必須</span></label>
+                    <input type="text" id="tracking-number" name="tracking-number" placeholder="例：123456789012" required>
+                    <small>ハイフン（-）なしで半角数字をご入力ください。</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone-number">電話番号 <span class="required">必須</span></label>
+                    <input type="tel" id="phone-number" name="phone-number" placeholder="例：09012345678" required>
+                    <small>ハイフン（-）なしで半角数字をご入力ください。</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="desired-date">配達希望日 <span class="required">必須</span></label>
+                    <select id="desired-date" name="desired-date" required>
+                        <option value="" disabled selected>選択してください</option>
+                        <option value="today">本日</option>
+                        <option value="tomorrow">明日</option>
+                        <option value="day-after-tomorrow">明後日</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="desired-time">配達希望時間帯 <span class="required">必須</span></label>
+                    <select id="desired-time" name="desired-time" required>
+                        <option value="" disabled selected>選択してください</option>
+                        <option value="午前中">午前中</option>
+                        <option value="14:00-16:00">14:00 ～ 16:00</option>
+                        <option value="16:00-18:00">16:00 ～ 18:00</option>
+                        <option value="18:00-20:00">18:00 ～ 20:00</option>
+                        <option value="19:00-21:00">19:00 ～ 21:00</option>
+                    </select>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-submit">次へ進む</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="success-container hidden" id="success-container">
+            <div class="success-icon">✓</div>
+            <h2 class="success-title">再配達の受付が完了しました</h2>
+            <p class="success-message">
+                ご指定の日時に配達いたします。<br>
+                受付番号：<span class="receipt-number" id="receipt-number"></span>
+            </p>
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span class="summary-label">送り状（伝票）番号:</span>
+                    <span class="summary-value" id="summary-tracking"></span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">配達希望日時:</span>
+                    <span class="summary-value" id="summary-time"></span>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" onclick="location.reload()">トップページへ戻る</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <p>&copy; Yamato Transport Co., Ltd. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+:root {
+    --primary-color: #000000;
+    --secondary-color: #FEE100;
+    --button-color: #006837; /* Yamato Green */
+    --button-hover: #008a49;
+    --text-color: #333333;
+    --bg-color: #F5F5F5;
+    --white: #FFFFFF;
+    --border-color: #DDDDDD;
+    --error-color: #E60012;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.site-header {
+    background-color: var(--secondary-color);
+    padding: 15px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+    letter-spacing: 2px;
+}
+
+.header-links a {
+    color: var(--primary-color);
+    text-decoration: none;
+    margin-left: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.header-links a:hover {
+    text-decoration: underline;
+}
+
+.main-content {
+    max-width: 800px;
+    margin: 20px auto 60px;
+    padding: 0 20px;
+}
+
+.breadcrumb {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.form-container, .success-container {
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.page-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 10px;
+}
+
+.instruction {
+    font-size: 15px;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.required {
+    background-color: var(--error-color);
+    color: var(--white);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-group small {
+    display: block;
+    color: #666;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.button-group {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.btn-submit {
+    background-color: var(--button-color);
+    color: var(--white);
+    border: none;
+    padding: 15px 60px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    max-width: 300px;
+}
+
+.btn-submit:hover {
+    background-color: var(--button-hover);
+}
+
+.btn-secondary {
+    background-color: #666;
+    color: var(--white);
+    border: none;
+    padding: 15px 40px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: #444;
+}
+
+.hidden {
+    display: none;
+}
+
+.success-container {
+    text-align: center;
+    padding: 50px 40px;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background-color: var(--button-color);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    margin: 0 auto 20px;
+}
+
+.success-title {
+    font-size: 24px;
+    color: var(--button-color);
+    margin-bottom: 20px;
+}
+
+.success-message {
+    font-size: 16px;
+    margin-bottom: 30px;
+}
+
+.summary-box {
+    background-color: #f9f9f9;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 4px;
+    text-align: left;
+    margin-bottom: 30px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.summary-row {
+    margin-bottom: 10px;
+}
+
+.summary-row:last-child {
+    margin-bottom: 0;
+}
+
+.summary-label {
+    font-weight: 700;
+    display: inline-block;
+    width: 150px;
+}
+
+.site-footer {
+    background-color: var(--primary-color);
+    color: var(--white);
+    text-align: center;
+    padding: 20px 0;
+    margin-top: auto;
+}
+
+.footer-container p {
+    font-size: 12px;
+}
+
+@media (max-width: 600px) {
+    .form-container, .success-container {
+        padding: 20px;
+    }
+    
+    .btn-submit {
+        width: 100%;
+        max-width: none;
+    }
+}

@@ -217,12 +217,24 @@ def format_plan_confirmation(plan: RedeliveryPlan) -> str:
     )
 
 
+def format_agent_trace(plan: RedeliveryPlan, result: BookingResult) -> str:
+    status = "booked" if result.success else "booking failed"
+    return (
+        "Agent trace:\n"
+        f"1. Read {plan.carrier} slip and found tracking {plan.tracking_number}\n"
+        f"2. Matched \"{plan.requested_time}\" to {plan.time_slot}\n"
+        "3. Waited for your confirmation\n"
+        f"4. Ran browser booking automation: {status}"
+    )
+
+
 async def _main_async(args: argparse.Namespace) -> None:
     plan = await plan_redelivery(args.image, args.time)
     print(plan.model_dump_json(indent=2, ensure_ascii=False))
     if args.book:
         result = await book_confirmed_redelivery(plan)
         print(result.model_dump_json(indent=2, ensure_ascii=False))
+        print(format_agent_trace(plan, result))
 
 
 def main() -> None:

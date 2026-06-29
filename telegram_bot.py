@@ -13,6 +13,7 @@ from telegram.ext import (
 from redelivery_agent import (
     RedeliveryPlan,
     book_confirmed_redelivery,
+    format_agent_trace,
     format_plan_confirmation,
     plan_redelivery,
 )
@@ -82,6 +83,7 @@ async def handle_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE
         result = await book_confirmed_redelivery(plan, progress=progress)
         if result.success:
             await update.message.reply_text(f"Result:\n{result.stdout}")
+            await update.message.reply_text(format_agent_trace(plan, result))
         else:
             await update.message.reply_text(f"Booking automation failed:\n{result.stderr or result.stdout}")
     except Exception as e:

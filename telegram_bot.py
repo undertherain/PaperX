@@ -11,17 +11,26 @@ from telegram.ext import (
     filters,
 )
 from redelivery_agent import (
+    DriverCallPlan,
     RedeliveryPlan,
     book_confirmed_redelivery,
+    call_confirmed_driver,
     format_agent_trace,
+    format_driver_call_confirmation,
+    format_driver_call_trace,
     format_plan_confirmation,
+    plan_driver_call,
     plan_redelivery,
 )
 
 load_dotenv()
 
-WAITING_FOR_TIME = 1
-WAITING_FOR_CONFIRMATION = 2
+WAITING_FOR_ACTION = 1
+WAITING_FOR_TIME = 2
+WAITING_FOR_CONFIRMATION = 3
+WAITING_FOR_CALL_CONFIRMATION = 4
+
+YES_ANSWERS = {"yes", "y", "ok", "confirm", "book", "call", "はい", "お願いします"}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send me a photo of your redelivery slip.")
@@ -37,8 +46,35 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     context.user_data['photo_path'] = file_path
     
-    await update.message.reply_text("Got it! What time tomorrow should I book the redelivery for? (e.g., '19:00-21:00')")
-    return WAITING_FOR_TIME
+    await update.message.reply_text(
+        "Got it. Should I fill the redelivery form for tomorrow, or call the driver for today?\n"
+        "Reply: form or call"
+    )
+    return WAITING_FOR_ACTION
+
+async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    action = update.message.text.strip().lower()
+    if action in {"form", "book", "tomorrow", "website", "web", "フォーム", "明日"}:
+        await update.message.reply_text("What time tomorrow should I book? (e.g., 'around six pm')")
+        return WAITING_FOR_TIME
+    if action in {"call", "driver", "today", "phone", "電話", "今日"}:
+        photo_path = context.user_data.get('photo_path', 'slip.jpg')
+        await update.message.reply_text("Starting the driver-call agent...")
+
+        async def progress(message: str) -> None:
+            await update.message.reply_text(message)
+
+        try:
+            plan = await plan_driver_call(photo_path, progress=progress)
+            context.user_data['driver_call_plan'] = plan.model_dump()
+            await update.message.reply_text(format_driver_call_confirmation(plan))
+            return WAITING_FOR_CALL_CONFIRMATION
+        except Exception as e:
+            await update.message.reply_text(f"Driver call setup failed:\n{e}")
+            return ConversationHandler.END
+
+    await update.message.reply_text("Please reply with form or call.")
+    return WAITING_FOR_ACTION
 
 async def handle_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     requested_time = update.message.text.strip()
@@ -65,7 +101,7 @@ async def handle_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = update.message.text.strip().lower()
-    if answer not in {"yes", "y", "ok", "confirm", "book", "はい", "お願いします"}:
+    if answer not in YES_ANSWERS:
         await update.message.reply_text("Canceled. No booking was made.")
         return ConversationHandler.END
 
@@ -91,6 +127,36 @@ async def handle_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     return ConversationHandler.END
 
+async def handle_call_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    answer = update.message.text.strip().lower()
+    if answer not in YES_ANSWERS:
+        await update.message.reply_text("Canceled. No call was made.")
+        return ConversationHandler.END
+
+    plan_payload = context.user_data.get('driver_call_plan')
+    if not plan_payload:
+        await update.message.reply_text("I lost the call plan. Please send the slip again.")
+        return ConversationHandler.END
+
+    plan = DriverCallPlan.model_validate(plan_payload)
+
+    async def progress(message: str) -> None:
+        await update.message.reply_text(message)
+
+    try:
+        result = await call_confirmed_driver(plan, progress=progress)
+        if result.success:
+            await update.message.reply_text(
+                f"Call started.\nSID: {result.call_sid}\nStatus: {result.status or 'created'}"
+            )
+            await update.message.reply_text(format_driver_call_trace(plan, result))
+        else:
+            await update.message.reply_text(f"Driver call failed:\n{result.error}")
+    except Exception as e:
+        await update.message.reply_text(f"Driver call failed:\n{e}")
+
+    return ConversationHandler.END
+
 def main():
     token = os.environ.get("TELEGRAM_TOKEN")
     if not token:
@@ -104,8 +170,12 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.PHOTO, handle_photo)],
         states={
+            WAITING_FOR_ACTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_action)],
             WAITING_FOR_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time)],
             WAITING_FOR_CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_confirmation)],
+            WAITING_FOR_CALL_CONFIRMATION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_call_confirmation)
+            ],
         },
         fallbacks=[CommandHandler("start", start)]
     )

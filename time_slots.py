@@ -10,8 +10,16 @@ VALID_TIME_SLOTS = ("午前中", "14:00-16:00", "16:00-18:00", "18:00-20:00", "1
 TIME_SLOT_ALIASES = {
     "morning": "午前中",
     "am": "午前中",
+    "noon": "午前中",
+    "midday": "午前中",
+    "lunchtime": "午前中",
+    "aroundnoon": "午前中",
+    "aroundmidday": "午前中",
     "午前": "午前中",
     "午前中": "午前中",
+    "正午": "午前中",
+    "昼": "午前中",
+    "お昼": "午前中",
     "14-16": "14:00-16:00",
     "14:00-16:00": "14:00-16:00",
     "16-18": "16:00-18:00",
@@ -58,9 +66,10 @@ Available slots:
 - 19:00-21:00
 
 Rules:
-- Choose exactly one available slot when the user intent is clear.
+- Choose the closest available slot when the user's requested time is near but not exactly inside a slot.
+- If the user asks for noon, midday, lunch, or around 12, choose 午前中 because it is the closest available slot.
 - Interpret casual English or Japanese phrases, e.g. "around six pm", "after work", "morning", "夕方".
-- If the request is ambiguous or conflicts with the available slots, use null.
+- If the request is truly impossible or too ambiguous to choose the closest slot, use null.
 - Do not invent slots."""
 
 
@@ -79,6 +88,8 @@ def _local_time_slot(text: str) -> str | None:
     compact = _compact_time_text(text)
 
     if any(token in compact for token in ("asap", "earliest", "早め", "一番早")):
+        return "午前中"
+    if any(token in compact for token in ("noon", "midday", "lunch", "12", "正午", "昼", "お昼")):
         return "午前中"
     if any(token in compact for token in ("afterwork", "仕事後", "退勤後")):
         return "19:00-21:00"

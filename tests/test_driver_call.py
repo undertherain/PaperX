@@ -53,6 +53,8 @@ class DriverCallTest(unittest.TestCase):
         booking = plan_redelivery_from_recognition(recognition, "around six pm")
         self.assertEqual(booking.time_slot, "18:00-20:00")
         self.assertEqual(booking.tracking_number, "123456789012")
+        noon_booking = plan_redelivery_from_recognition(recognition, "around noon")
+        self.assertEqual(noon_booking.time_slot, "午前中")
 
         call = plan_driver_call_from_recognition(recognition)
         self.assertEqual(call.driver_phone_number, "+818011112222")

@@ -6,6 +6,8 @@ from time_slots import normalize_time_slot
 class TimeSlotNormalizationTest(unittest.TestCase):
     def test_normalizes_natural_language_time(self):
         self.assertEqual(normalize_time_slot("around six pm"), "18:00-20:00")
+        self.assertEqual(normalize_time_slot("around noon"), "午前中")
+        self.assertEqual(normalize_time_slot("lunchtime"), "午前中")
         self.assertEqual(normalize_time_slot("six pm"), "18:00-20:00")
         self.assertEqual(normalize_time_slot("after work"), "19:00-21:00")
 

@@ -1,0 +1,6 @@
+openai
+openai-agents
+playwright
+pydantic
+python-dotenv
+python-telegram-bot

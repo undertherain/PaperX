@@ -1,7 +1,4 @@
-import asyncio
 import os
-import subprocess
-import sys
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -13,19 +10,17 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from slip_recognition import DEFAULT_PHONE_NUMBER, SlipRecognition, recognize_slip
-from time_slots import normalize_time_slot
+from redelivery_agent import (
+    RedeliveryPlan,
+    book_confirmed_redelivery,
+    format_plan_confirmation,
+    plan_redelivery,
+)
 
 load_dotenv()
 
 WAITING_FOR_TIME = 1
-
-def format_recognition(result: SlipRecognition) -> str:
-    phone = result.phone_number or f"{DEFAULT_PHONE_NUMBER} (default)"
-    return (
-        f"tracking={result.tracking_number or 'not found'}, "
-        f"phone={phone}, confidence={result.confidence:.2f}"
-    )
+WAITING_FOR_CONFIRMATION = 2
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Send me a photo of your redelivery slip.")
@@ -39,55 +34,59 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_path = f"downloads/{photo_file.file_id}.jpg"
     await photo_file.download_to_drive(file_path)
     
-    # Start recognition now so the user's time-slot reply hides most of the latency.
     context.user_data['photo_path'] = file_path
-    context.user_data['recognition_task'] = asyncio.create_task(
-        asyncio.to_thread(recognize_slip, file_path)
-    )
     
     await update.message.reply_text("Got it! What time tomorrow should I book the redelivery for? (e.g., '19:00-21:00')")
     return WAITING_FOR_TIME
 
 async def handle_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    time_slot = normalize_time_slot(update.message.text)
+    requested_time = update.message.text.strip()
     photo_path = context.user_data.get('photo_path', 'slip.jpg')
-    
-    await update.message.reply_text(f"Booking redelivery for {time_slot}...")
+
+    await update.message.reply_text("Starting the redelivery agent...")
     
     try:
-        recognition_task = context.user_data.get('recognition_task')
-        if recognition_task:
-            recognition = await recognition_task
-        else:
-            recognition = await asyncio.to_thread(recognize_slip, photo_path)
+        async def progress(message: str) -> None:
+            await update.message.reply_text(message)
 
-        if not recognition.tracking_number:
-            await update.message.reply_text(
-                f"I could not confidently read the tracking number. Notes: {recognition.notes or 'none'}"
-            )
-            return ConversationHandler.END
-
-        await update.message.reply_text(f"Slip read: {format_recognition(recognition)}")
-
-        result = await asyncio.to_thread(
-            subprocess.run,
-            [
-                sys.executable,
-                "tools/playwright_booking.py",
-                recognition.tracking_number,
-                recognition.booking_phone_number,
-                time_slot,
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
+        plan = await plan_redelivery(
+            photo_path,
+            requested_time,
+            progress=progress,
         )
-        await update.message.reply_text(f"Result:\n{result.stdout}")
-    except subprocess.CalledProcessError as e:
-        await update.message.reply_text(f"Booking automation failed:\n{e.stderr}")
+        context.user_data['booking_plan'] = plan.model_dump()
+        await update.message.reply_text(format_plan_confirmation(plan))
+        return WAITING_FOR_CONFIRMATION
     except Exception as e:
         await update.message.reply_text(f"Booking failed:\n{e}")
         
+    return ConversationHandler.END
+
+async def handle_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    answer = update.message.text.strip().lower()
+    if answer not in {"yes", "y", "ok", "confirm", "book", "はい", "お願いします"}:
+        await update.message.reply_text("Canceled. No booking was made.")
+        return ConversationHandler.END
+
+    plan_payload = context.user_data.get('booking_plan')
+    if not plan_payload:
+        await update.message.reply_text("I lost the booking plan. Please send the slip again.")
+        return ConversationHandler.END
+
+    plan = RedeliveryPlan.model_validate(plan_payload)
+
+    async def progress(message: str) -> None:
+        await update.message.reply_text(message)
+
+    try:
+        result = await book_confirmed_redelivery(plan, progress=progress)
+        if result.success:
+            await update.message.reply_text(f"Result:\n{result.stdout}")
+        else:
+            await update.message.reply_text(f"Booking automation failed:\n{result.stderr or result.stdout}")
+    except Exception as e:
+        await update.message.reply_text(f"Booking failed:\n{e}")
+
     return ConversationHandler.END
 
 def main():
@@ -102,7 +101,10 @@ def main():
     
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.PHOTO, handle_photo)],
-        states={WAITING_FOR_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time)]},
+        states={
+            WAITING_FOR_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time)],
+            WAITING_FOR_CONFIRMATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_confirmation)],
+        },
         fallbacks=[CommandHandler("start", start)]
     )
     

@@ -23,8 +23,8 @@ class DriverCallTest(unittest.TestCase):
 
     def test_driver_objective_is_short_and_handles_rejection(self):
         objective = build_short_driver_call_objective("123456789012")
-        self.assertIn("20秒以内", objective)
-        self.assertIn("最短はいつですか", objective)
+        self.assertIn("必ず相手の返答を待つ", objective)
+        self.assertIn("今日中は可能ですか", objective)
         self.assertIn("123456789012", objective)
 
     def test_summarizes_too_late_for_today(self):

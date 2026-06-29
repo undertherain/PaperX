@@ -511,11 +511,11 @@ def format_driver_call_trace(plan: DriverCallPlan, result: DriverCallResult) -> 
 def build_short_driver_call_objective(tracking_number: str | None) -> str:
     tracking = tracking_number or "不明"
     return (
-        "日本語で短く電話してください。全体を20秒以内に収めます。"
-        "一文ずつ、余計な説明なし。"
-        f"最初に「再配達の件です。伝票番号は{tracking}です。今日中の再配達は可能ですか？」と聞く。"
-        "可能なら時間だけ確認してお礼を言って終了。"
-        "無理なら「最短はいつですか？」だけ聞いて、お礼を言って終了。"
+        "日本語で極短く電話。雑談、説明、復唱、前置きは禁止。"
+        "一度に一文だけ話し、必ず相手の返答を待つ。"
+        f"最初の一文だけ: 「再配達です。伝票番号{tracking}、今日中は可能ですか？」"
+        "相手が可能と言ったら: 「何時ごろですか？」だけ聞く。"
+        "相手が不可または不明と言ったら: 「わかりました。ありがとうございます。」と言って終了。"
     )
 
 
